@@ -1,0 +1,486 @@
+---
+title: "Cyclistic Bike Share Analysis"
+author: "Asif Dawood"
+date: "2024-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+###  Period March 2023 to Februrary 2024
+
+
+###  Introduction
+
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5,824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime. 
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments. One approach that helped make these things possible was the flexibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. 
+Customers who purchase single-ride or full-day passes are referred to as casual riders.
+Customers who purchase annual memberships are Cyclistic members.Cyclistic’s finance analysts have concluded that annual members are much more profitable
+than casual riders. 
+
+### Case study
+This report will examine the business question: 'what is the most effective marketing strategy to converting Cyclistic’s casual riders to annul memberships?'
+In order to achieve the above we would need to answer the following: 
+
+* How do annual members and casual riders use Cyclistic bikes differently? 
+* Why would casual riders buy Cyclistic annual memberships? 
+* How can Cyclistic use digital media to influence casual riders to become members?  
+
+This report will seek to deliver on the following objectives:  
+
+#### **How do annual members and casual riders use Cyclistic bikes differently?**
+
+### Stakeholders 
+This includes:  
+* Director of Marketing,   
+* Cyclistic Marketing team,   
+* Cyclistic Executive team  
+ 
+ 
+### Data sources
+User data from the past 12 months, March 2023 - February 2024 has been made available. Each data set is in csv format and details every ride logged by Cyclistic customers. This data has been made publicly available via license by Motivate International Inc. All user’s personal data has been cleared for privacy.
+
+### Documentation, cleaning and preparation of data for analysis
+
+### Tools for analysis
+R is being used due to the data size and visualizations needed to complete this analysis.
+
+
+
+#### Import the Packages
+
+```{r warning=FALSE}
+#install.packages("tidyverse")
+#install.packages("lubridate")
+```
+#### Load the Packages
+```{r echo=TRUE}
+library(tidyverse)
+library(lubridate)
+```
+#### Import Data
+
+```{r echo=TRUE}
+
+df_mar <- read_csv("./tripdata/202303-divvy-tripdata.csv")
+df_apr <- read_csv("./tripdata/202304-divvy-tripdata.csv")
+df_may <- read_csv("./tripdata/202305-divvy-tripdata.csv")
+df_jun <- read_csv("./tripdata/202306-divvy-tripdata.csv")
+df_jul <- read_csv("./tripdata/202307-divvy-tripdata.csv")
+df_aug <- read_csv("./tripdata/202308-divvy-tripdata.csv")
+df_sep <- read_csv("./tripdata/202309-divvy-tripdata.csv")
+df_oct <- read_csv("./tripdata/202310-divvy-tripdata.csv")
+df_nov <- read_csv("./tripdata/202311-divvy-tripdata.csv")
+df_dec <- read_csv("./tripdata/202312-divvy-tripdata.csv")
+df_jan <- read_csv("./tripdata/202401-divvy-tripdata.csv")
+df_feb <- read_csv("./tripdata/202402-divvy-tripdata.csv")
+```
+#### Check Column names
+
+```{r}
+colnames(df_mar)
+glimpse(df_mar)
+```
+#### Combining all the 12 months data
+
+```{r}
+df_trips <- rbind(df_mar,df_apr,df_may,df_jun,df_jul,df_aug,df_sep,df_oct,df_nov,df_dec,df_jan,df_feb)
+
+```
+#### Inspecting the data
+
+```{r}
+colnames(df_trips)
+
+```
+
+```{r}
+glimpse(df_trips)
+```
+
+```{r}
+nrow(df_trips)
+```
+
+```{r}
+dim(df_trips)
+```
+
+```{r}
+head(df_trips)
+```
+
+```{r}
+str(df_trips)
+```
+
+```{r}
+summary(df_trips)
+```
+#### Delete the individual data frames from memory
+
+```{r}
+rm(df_mar,df_apr,df_may,df_jun,df_jul,df_aug,df_sep,df_oct,df_nov,df_dec,df_jan,df_feb)
+
+```
+#### Checking the categorical columns
+```{r}
+table(df_trips$rideable_type)
+table(df_trips$member_casual)
+```
+#### Adding columns for Data, Month, Year and day of week in to dataframe
+
+```{r}
+df_trips$date <- as.Date(df_trips$started_at)
+
+df_trips$month <- format(df_trips$date,"%b")
+df_trips$day <- format(df_trips$date, "%d")
+df_trips$year <- format(df_trips$date,"%Y")
+df_trips$day_of_week <- format(df_trips$date, "%A")
+
+```
+
+#### Getting the ride length and converting to numeric
+
+```{r}
+df_trips$ride_length <- difftime(df_trips$ended_at,df_trips$started_at)
+df_trips$ride_length <-as.numeric(df_trips$ride_length)
+
+
+```
+
+
+```{r}
+unique(df_trips$rideable_type)
+
+```
+#### Removing not relevant columns
+
+```{r}
+df_trips <- df_trips %>%  
+  select(-c(start_lat, start_lng, end_lat, end_lng, start_station_id,end_station_id, end_station_name))
+```
+
+
+#### Removing docked_bikes and ride_length <60
+
+```{r}
+df_trips <- df_trips %>% 
+  filter( df_trips$rideable_type != "docked_bike" )
+
+df_trips <- df_trips %>% 
+  filter(df_trips$ride_length >60)
+
+```
+
+#### Ordering the day of week
+
+```{r}
+df_trips$day_of_week <- ordered(df_trips$day_of_week,levels =c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+
+```
+
+####  General statistics for members vs casual
+
+```{r}
+type_member_mean <- aggregate(df_trips$ride_length,list(df_trips$member_casual), mean)
+type_member_max <- aggregate(df_trips$ride_length, list(df_trips$member_casual),max)
+type_member_min <- aggregate(df_trips$ride_length,list(df_trips$member_casual), min)
+type_member_mean
+type_member_max
+type_member_min
+```
+
+#### Average ride time by member_type and week day
+
+```{r}
+member_day_mean <- aggregate(df_trips$ride_length, by =list(df_trips$member_casual, df_trips$day_of_week),mean)
+
+colnames(member_day_mean) <- c("membership", "day_of_week", "average_trip_duration")
+member_day_mean
+```
+
+
+#### Total rides, mean duration, total duration by member type and day of week
+```{r}
+
+p <- df_trips %>% 
+  group_by(member_casual,day_of_week) %>% 
+  summarise(number_of_rides =n(), average_duration = round(mean(ride_length),0),total_duration = sum(ride_length)) %>% 
+  arrange(member_casual,day_of_week)
+  
+
+p
+```
+
+#### Plotting by count of rides
+
+```{r}
+p %>% 
+  ggplot(aes(x=day_of_week, y=number_of_rides, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Rides by days of week",x="Day of week",y="Number of Rides" )
+
+ggsave("Rides by days of week.png")
+```
+#### Inference: The total no of rides by members are more that casual. Compartively the member rides on Weekends are lower than the rides on weekdays. While for casual riders the weekd end rides are more than the weekend rides. So the memeber rides will be one using their rides to go to their jobs.
+
+
+
+#### Plotting by Average of ride duration
+
+```{r}
+p %>% 
+  ggplot(aes(x=day_of_week, y=average_duration, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Average duration by days of week",x="Day of week",y="Average duration" )
+
+ggsave("Average duration by days of week.png")
+```
+#### Inference : The memebers average duration is less thoughout compared to the casual riders. Also the casual riders average distance on weekends are way higher than on the weekdays. So the  casual  riders averageduration is more even though their no of trips is less. It concludes that the casual riders use this for longer rides especially during weekends
+
+
+
+#### Plotting by total duration of rides
+
+```{r}
+p %>% 
+  ggplot(aes(x=day_of_week, y=total_duration, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Total duration by days of week",x="Day of week",y="Total duration of Rides" )
+ggsave("Total duration by days of week.png")
+
+```
+####Total duration also is more for casual so it reinc=forces the above inference
+
+
+#### Summarising total duration between member and casual and their percentages for Pie chart
+
+```{r}
+piedata <- df_trips %>% 
+  group_by(member_casual) %>% 
+  summarise(number_of_rides =n(), average_duration =round(mean(ride_length),0), total_duration =sum(ride_length))
+
+piedata<- piedata %>% 
+  mutate(percent_number = round(number_of_rides/sum(number_of_rides) *100,0),
+         percent_mean = round(average_duration / sum(average_duration) *100,0),
+         percent_total= round(total_duration/sum(total_duration) * 100,0))
+
+piedata
+```
+#### Setting up the color palette
+
+```{r}
+# Setting the color
+library(RColorBrewer)
+myPalette <- brewer.pal(3, "Set1") 
+
+```
+
+#### Pie chart comparing number of rides
+```{r}
+
+lbls<-paste(piedata$percent_number,"%")
+lbls <- paste(piedata$member_casual,piedata$number_of_rides,lbls, sep= ", ")
+pie(piedata$number_of_rides, labels = lbls, col=myPalette, main = " Comparing No of rides between Casual and Member")
+
+
+```
+#### Inference: The no of casual riders is 35% and memener riders are 65%
+
+#### Comparing average duration between Casual and Member
+
+```{r}
+lbls1= paste(piedata$average_duration,"s", sep="")
+lbls2=paste(piedata$percent_mean,"%", sep="")
+lbls <- paste(piedata$member_casual,lbls1,lbls2, sep= ", ")
+pie(piedata$average_duration, labels = lbls, col=myPalette, main = " Comparing average of duration between Casual and Member")
+
+
+```
+#### Inference: But when it comes to average duration , the casual riders are at 65%. So it shows that their rides are longer than by the members
+
+
+#### Comparing total duration betwen casual and member
+
+
+```{r}
+lbls1= paste(piedata$total_duration,"s", sep="")
+lbls2=paste(piedata$percent_total,"%", sep="")
+lbls <- paste(piedata$member_casual,lbls1,lbls2, sep= ", ")
+pie(piedata$total_duration, labels = lbls, col=myPalette, main = " Comparing Total duration between Casual and Member")
+
+
+```
+#### Inference: But when it comes total  duration , Both are nearly same
+
+#### Find long rides greater than one day and summarisation
+
+```{r}
+long_rides <- df_trips[(df_trips$ride_length >= 86400),]
+
+p_long <- df_trips %>% 
+  filter(ride_length>=86400) %>% 
+  group_by(member_casual) %>% 
+  summarise(number_of_rides =n(), average_druation = round(mean(ride_length),0),total_duration = sum(ride_length)) %>% 
+  arrange(member_casual)
+
+p_long
+```
+#### Plot count of no of rides greater than 1 day
+```{r}
+p_long %>% 
+  ggplot(aes(x=member_casual, y=number_of_rides, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="No of Rides greater than 1 day",x="Day of week",y="Number of Rides" )
+
+ggsave("No of Rides greater than 1 day.png")
+```
+#### Plot total duration of rides greater than 1 day
+
+```{r}
+p_long %>% 
+  ggplot(aes(x=member_casual, y=total_duration, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Total Duration for rides greater than 1 day",x="Day of week",y="Total duration of Rides" )
+
+ggsave("Total Duration for rides greater than 1 day.png")
+```
+#### Order by Month name
+```{r}
+df_trips$month <- ordered(df_trips$month,levels =c("Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul","Aug","Sep", "Oct","Nov", "Dec"))
+```
+
+
+
+#### Trips by months
+
+
+```{r}
+p_month <- df_trips %>% 
+  group_by(member_casual,month) %>% 
+  summarise(number_of_rides =n(), average_duration = round(mean(ride_length),0),total_duration = sum(ride_length)) %>% 
+  arrange(member_casual,month)
+
+
+p_month
+```
+
+#### Plot the number of rides by month and member_casual
+
+```{r}
+p_month %>% 
+  ggplot(aes(x=month, y=number_of_rides, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="No of Rides by Month",x="Month",y="Number of Rides" )
+
+ggsave("No of Rides by Month.png")
+```
+#### Inference: the no of rides by memebers are more than than the casual ones. the rides peak through the summer months and at the lowest during the Dec-Jan months due to the extrem winter perhaps
+
+
+
+#### Plot the average duration of rides by month and member_casual
+
+```{r}
+p_month %>% 
+  ggplot(aes(x=month, y=average_duration, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Average duration of rides by month",x="Month",y="Number of Rides" )
+
+ggsave("Average duration of rides by month.png")
+```
+#### Inference: But when it comes ta average duration , the casual riders are more than the memebers
+
+
+#### Plot the total duration of rides by month and member_casual
+
+```{r}
+p_month %>% 
+  ggplot(aes(x=month, y=total_duration, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Total duration of rides by month",x="Month",y="Number of Rides" )
+
+ggsave("Total duration of rides by month.png")
+```
+
+#### summarising the data by rideable_type and memeber type
+
+```{r}
+p_type<- df_trips %>% 
+  group_by(member_casual,rideable_type) %>% 
+  summarise(number_of_rides =n(), average_duration = round(mean(ride_length),0),total_duration = sum(ride_length)) %>% 
+  arrange(member_casual,rideable_type)
+
+ p_type 
+```
+#### Plotting the number of rides by Ride type
+
+```{r}
+p_type %>% 
+ ggplot(aes(x=rideable_type, y=number_of_rides, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="No of Rides by Ride type",x="Type of Ride",y="Number of Rides" )
+
+ggsave("No of Rides by Ride type.png")
+```
+#### Inference: Casual members use more of electric bike than classic bike. while the memebers are more or less same when it comes to type of bike
+
+
+#### Plotting the total duration by Ride type
+
+```{r}
+p_type %>% 
+ ggplot(aes(x=rideable_type, y=total_duration, fill=member_casual))+
+  geom_col(position = "dodge")+
+  labs(title ="Total duration of Rides by Ride type",x="Type of Ride",y="Number of Rides" )
+
+ggsave("Total duration of Rides by Ride type.png")
+```
+#### Inference: The duration of ride is more for casual bike than the electric ones
+
+
+#### Summarising by Ride types
+
+```{r}
+p_type1<- df_trips %>% 
+  group_by(rideable_type) %>% 
+  summarise(number_of_rides =n(), average_duration = round(mean(ride_length),0),total_duration = sum(ride_length)) %>% 
+  mutate(percent_number = round(number_of_rides /sum(number_of_rides)*100,0))
+ 
+
+ p_type1 
+```
+
+
+#### Plotting pie chart showing the count of trips by rideable type
+```{r}
+lbls1= paste(p_type1$number_of_rides, sep="")
+lbls2=paste(p_type1$percent_number,"%", sep="")
+lbls <- paste(p_type1$rideable_type,lbls1,lbls2, sep= ", ")
+pie(p_type1$number_of_rides, labels = lbls, col=myPalette, main = "Rideable types")
+
+```
+
+#### Inference :The usage in number of trips are more or less same by the bike type
+
+
+
+
+### Conclusion  
+1) The casual riders ride more on weekends while the members ride more on weekdays.  
+2) Also the the longer rides are usually taken by casual riders  
+
+### Recommendation  
+1) Incentives can be given to Casual riders who take the bike for longer duration who convert to members  
+2) Weekend special deals can be given for members so that the casual will be encouraged to join the member program  
+
+
+```{r}
+write.csv(df_trips,file="cycle_trips.csv", row.names = TRUE)
+```
+
